@@ -2,34 +2,54 @@ name: Build Android APK
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
-      # 1. Ambil kode kita
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v2
 
-      # 2. Perbaiki izin file (Sering bikin error di Linux)
-      - name: Fix permissions
-        run: |
-          chmod +x main.py
-          chmod +x buildozer.spec
-
-      # 3. Jalankan Buildozer menggunakan Robot (Action) yang Benar
-      # Saya sudah memperbaiki alamat repo-nya di sini
-      - name: Build with Buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
-        id: buildozer
+      # 1. Siapkan Java 17 (Wajib untuk Android jaman now)
+      - name: Setup Java
+        uses: actions/setup-java@v3
         with:
-          command: buildozer android debug
-          buildozer_version: stable
+          distribution: 'temurin'
+          java-version: '17'
 
-      # 4. Upload Hasil APK (Versi v4 terbaru)
-      - name: Upload APK
+      # 2. Siapkan Python 3.10
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      # 3. Install Alat-Alat Linux (Manual)
+      # Kita install sendiri supaya tidak tergantung plugin orang lain
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential libltdl-dev libffi-dev libssl-dev \
+            python3-dev git zip unzip autoconf libtool \
+            pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev \
+            libtinfo5 cmake libtool-bin
+
+      # 4. Install Buildozer & Cython Stabil
+      - name: Install Buildozer
+        run: |
+          pip install --upgrade pip
+          pip install buildozer
+          pip install "cython<3.0.0"
+
+      # 5. BERSIHKAN SYSTEM (Penting!)
+      # Kita paksa Buildozer untuk download SDK Android dari nol
+      - name: Build APK
+        run: |
+          yes | buildozer android debug
+
+      # 6. Upload Hasil APK
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: package
+          name: autotube-apk
           path: bin/*.apk
