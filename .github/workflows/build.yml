@@ -1,0 +1,24 @@
+name: Build Android APK
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      # Langkah 1: Siapkan Buildozer
+      - name: Build with Buildozer
+        uses: ArtemSBulgakov/buildozer-action-v1@v1
+        id: buildozer
+        with:
+          command: buildozer android debug
+          buildozer_version: master
+
+      # Langkah 2: Upload Hasil APK
+      - name: Upload APK
+        uses: actions/upload-artifact@v2
+        with:
+          name: package
+          path: bin/*.apk
