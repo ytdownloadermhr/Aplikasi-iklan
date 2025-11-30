@@ -1,44 +1,33 @@
 name: Build Android APK
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Ambil kode dari repository (Gunakan versi v4 terbaru)
+      # 1. Ambil kode kita
       - uses: actions/checkout@v4
 
-      # 2. Siapkan Java (Dibutuhkan Android)
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      # 2. Perbaiki izin file (Sering bikin error di Linux)
+      - name: Fix permissions
+        run: |
+          chmod +x main.py
+          chmod +x buildozer.spec
+
+      # 3. Jalankan Buildozer menggunakan Robot (Action) yang Benar
+      # Saya sudah memperbaiki alamat repo-nya di sini
+      - name: Build with Buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
+        id: buildozer
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          command: buildozer android debug
+          buildozer_version: stable
 
-      # 3. Instal semua kebutuhan sistem (Manual agar tidak error repository not found)
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            python3-pip build-essential git python3 \
-            python3-dev ffmpeg libsdl2-dev libsdl2-image-dev \
-            libsdl2-mixer-dev libsdl2-ttf-dev libportmidi-dev \
-            libswscale-dev libavformat-dev libavcodec-dev \
-            zlib1g-dev libltdl-dev libffi-dev libssl-dev \
-            autoconf autotools-dev
-          
-      # 4. Instal Buildozer & Cython
-      - name: Install Buildozer
-        run: |
-          pip install --upgrade pip
-          pip install buildozer cython==0.29.33
-
-      # 5. Jalankan Perintah Build (Yes otomatis)
-      - name: Build APK
-        run: yes | buildozer android debug
-
-      # 6. Upload Hasil APK (Gunakan versi v4 terbaru)
+      # 4. Upload Hasil APK (Versi v4 terbaru)
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
