@@ -1,52 +1,32 @@
-name: Build APK Stabil
-on: [push, workflow_dispatch]
+name: Build Android (Docker)
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
-    # KITA PAKAI UBUNTU 22.04 AGAR LEBIH STABIL
-    runs-on: ubuntu-22.04
-
+    runs-on: ubuntu-latest
     steps:
+      # 1. Ambil kode
       - uses: actions/checkout@v4
 
-      # 1. SIAPKAN PYTHON 3.9 (Paling cocok buat Kivy)
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4
+      # 2. Perbaiki izin file (Penting untuk Docker)
+      - name: Fix permissions
+        run: |
+          sudo chmod +x main.py
+          sudo chmod +x buildozer.spec
+          sudo chown -R $USER:$USER .
+
+      # 3. Build menggunakan Docker (Alat sudah siap pakai)
+      - name: Build with Buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
+        id: buildozer
         with:
-          python-version: '3.9'
+          command: buildozer android debug
+          buildozer_version: master
 
-      # 2. SIAPKAN JAVA (Wajib buat Android)
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      # 3. INSTAL ALAT-ALAT PENTING (Manual)
-      - name: Install Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential git ffmpeg libsdl2-dev libsdl2-image-dev \
-            libsdl2-mixer-dev libsdl2-ttf-dev libportmidi-dev \
-            libswscale-dev libavformat-dev libavcodec-dev zlib1g-dev \
-            libltdl-dev libffi-dev libssl-dev autoconf autotools-dev
-          
-      # 4. INSTAL BUILDOZER & CYTHON (Versi Khusus)
-      # Cython wajib versi 0.29.33 agar tidak error!
-      - name: Install Buildozer
-        run: |
-          pip install --upgrade pip
-          pip install buildozer
-          pip install Cython==0.29.33
-
-      # 5. BERSIHKAN FILE LAMA & BUILD
-      - name: Build APK
-        run: |
-          rm -rf .buildozer
-          yes | buildozer android debug
-
-      # 6. UPLOAD HASIL
+      # 4. Upload Hasil
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
