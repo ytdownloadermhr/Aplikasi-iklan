@@ -1,4 +1,4 @@
-name: Build APK Manual (Final)
+name: Build APK (Mode Stabil)
 on:
   push:
     branches: [ main ]
@@ -6,32 +6,35 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    # Kita mundur ke Ubuntu 20.04 karena paling stabil untuk Buildozer
+    runs-on: ubuntu-20.04
 
     steps:
-      # 1. Ambil kode
       - uses: actions/checkout@v4
 
-      # 2. Siapkan Java 17 (Wajib untuk AdMob)
-      - name: Set up JDK 17
+      # 1. Kosongkan ruang penyimpanan (Mencegah error memori penuh)
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+      # 2. Setup Java 11 (BUKAN 17). Java 11 paling cocok untuk Android SDK lama.
+      - name: Set up JDK 11
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '11'
 
-      # 3. Siapkan Python 3.9 (Paling stabil untuk Kivy)
-      - name: Set up Python 3.9
+      # 3. Setup Python 3.8 (Versi Emas untuk Kivy)
+      - name: Set up Python 3.8
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.8'
 
-      # 4. Hapus Cache Lama (PENTING: Agar error download tadi hilang)
-      - name: Clean Cache
-        run: |
-          rm -rf .buildozer
-          rm -rf bin
-
-      # 5. Instal kebutuhan sistem (Dependencies)
+      # 4. Instal Kebutuhan Sistem (Lebih Lengkap)
+      # Saya tambahkan 'libtool' dan 'autoconf' yang sering bikin macet kalau tidak ada
       - name: Install Dependencies
         run: |
           sudo apt-get update
@@ -39,22 +42,24 @@ jobs:
             build-essential git ffmpeg libsdl2-dev libsdl2-image-dev \
             libsdl2-mixer-dev libsdl2-ttf-dev libportmidi-dev \
             libswscale-dev libavformat-dev libavcodec-dev zlib1g-dev \
-            libltdl-dev libffi-dev libssl-dev autoconf autotools-dev zip \
-            unzip
+            libltdl-dev libffi-dev libssl-dev autoconf autotools-dev \
+            libtool pkg-config zip unzip
 
-      # 6. Instal Buildozer Terbaru
+      # 5. Instal Buildozer
       - name: Install Buildozer
         run: |
           pip install --upgrade pip
-          pip install --upgrade buildozer
-          pip install Cython==0.29.33
+          pip install buildozer cython==0.29.33
 
-      # 7. Mulai Build (Dengan konfirmasi 'yes')
+      # 6. Build APK (Dengan pembersihan awal)
+      # yes | ... memaksakan persetujuan lisensi
       - name: Build APK
-        run: yes | buildozer android debug
+        run: |
+          buildozer android clean
+          yes | buildozer android debug
 
-      # 8. Upload APK
-      - name: Upload Artifact
+      # 7. Upload Hasil
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: package
